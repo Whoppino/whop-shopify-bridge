@@ -6,9 +6,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-const WHOP_API_KEY = process.env.WHOP_API_KEY;
-const WHOP_PLAN_ID = process.env.WHOP_PLAN_ID;
+const PORT = process.env.PORT || 10000;
+const WHOP_API_KEY = process.env.WHOP_API_KEY ? process.env.WHOP_API_KEY.trim() : '';
+const WHOP_PLAN_ID = process.env.WHOP_PLAN_ID ? process.env.WHOP_PLAN_ID.trim() : '';
 
 // Route de vérification de l'état du serveur
 app.get('/', (req, res) => {
@@ -21,10 +21,9 @@ app.post('/api/create-checkout', async (req, res) => {
     const { email, variantId } = req.body;
 
     const response = await axios.post(
-      'https://api.whop.com/api/v2/checkouts',
+      'https://api.whop.com/api/v5/checkout_configurations',
       {
         plan_id: WHOP_PLAN_ID,
-        redirect_url: 'https://whop.com',
         metadata: {
           email: email || '',
           variant_id: variantId || ''
@@ -32,16 +31,18 @@ app.post('/api/create-checkout', async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${WHOP_API_KEY}`,
+          'Authorization': `Bearer ${WHOP_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    res.json({ checkout_url: response.data.url });
+    // الرابط المباشر لصفحة الدفع من استجابة Whop v5
+    const checkoutUrl = response.data?.purchase_url || response.data?.url;
+    res.json({ checkout_url: checkoutUrl });
   } catch (error) {
     console.error('Checkout error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+    res.status(500).json({ error: 'Failed to create checkout session', details: error.response?.data });
   }
 });
 
